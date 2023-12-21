@@ -4,11 +4,17 @@ package main
 import (
     "fmt"
     "github.com/gvp-alekhya/VelociStore/server"
+    "log"
+    _ "net/http/pprof"
+    "net/http"
 )
 
 
 // Main function where the server starts
 func main() {
     fmt.Println("Server Running...")
-    tcp_conn.RunTCPServer()
+    server.RunTCPServer()
+    go func() {
+        log.Println(http.ListenAndServe("localhost:2345", nil))
+    }()
 }

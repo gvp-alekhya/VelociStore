@@ -1,9 +1,11 @@
-package tcp_conn
+package server
 
 import ("fmt"
 "io"
 "net"
-"os")
+"os"
+"strings"
+"github.com/gvp-alekhya/VelociStore/core")
 // Constants defining server details
 const (
     SERVER_HOST = "0.0.0.0"
@@ -53,19 +55,18 @@ func RunTCPServer(){
 					break
 				}
 			}
+            fmt.Printf("command %v \n:: ", command)
 			err = writeCommand(connection, command)
 			if err != nil {
-				fmt.Println("Write failed")
+				fmt.Printf("Write failed %v \n:: ", err)
 			}
 		}
 	//}(connection, connection.RemoteAddr())
   }
-		
-	server.Close()
 }
 
 // Function to process a client's connection
-func readCommand(connection net.Conn) (command string, err error) {
+func readCommand(connection net.Conn) (*core.RespCmd, error) {
     // Create a buffer to read data from the client
     buffer := make([]byte, 1024)
 
@@ -74,14 +75,25 @@ func readCommand(connection net.Conn) (command string, err error) {
     if err != nil {
         fmt.Println("Error reading:", err.Error())
     }
-	command = string(buffer[:mLen])
+	command := (buffer[:mLen])
     // Print the received data from the client
-    fmt.Println("Received: ", command)
-	return 
+    tokens,err := core.DecodeArrayString(command)
+    if err != nil {
+		return nil, err
+	}
+    respcmd := &core.RespCmd{
+        Cmd:  strings.ToUpper(tokens[0]),
+        Args: tokens[1:],
+    }
+	return respcmd, nil
 }
 
-func writeCommand (connection net.Conn, command string)  ( err error){
+func writeCommand (connection net.Conn, respcmd *core.RespCmd)  ( err error){
 	 // Send a response to the client acknowledging receipt of the message
-	 _, err = connection.Write([]byte("Thanks! Got your message:" + command))
+     err = core.EvaluateAndRespond(respcmd, connection)
+	 if err!=nil{
+        errMsg := fmt.Sprintf("-%s\r\n", err)
+        connection.Write([]byte(errMsg))
+     }
 	 return
 }
