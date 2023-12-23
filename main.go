@@ -13,7 +13,7 @@ import (
 // Main function where the server starts
 func main() {
     fmt.Println("Server Running...")
-    server.RunTCPServer()
+    server.RunAsyncTCPServer()
     go func() {
         log.Println(http.ListenAndServe("localhost:2345", nil))
     }()

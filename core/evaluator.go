@@ -3,10 +3,10 @@ package core
 import (
 	"errors"
 	"fmt"
-	"net"
+	"io"
 )
 
-func evalCommand(args []string, c net.Conn) error {
+func evalCommand(args []string, c io.ReadWriter) error {
 	var b []byte
 
 	if len(args) >= 2 {
@@ -23,8 +23,8 @@ func evalCommand(args []string, c net.Conn) error {
 	return err
 }
 
-func EvaluateAndRespond(cmd *RespCmd, c net.Conn) error {
-	fmt.Println("EvaluateAndRespond comand::", cmd.Cmd)
+func EvaluateAndRespond(cmd *RespCmd, c io.ReadWriter) error {
+	//fmt.Println("EvaluateAndRespond comand::", cmd.Cmd)
 	switch cmd.Cmd {
 	case "PING":
 		return evalCommand(cmd.Args, c)
