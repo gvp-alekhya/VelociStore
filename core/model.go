@@ -33,3 +33,11 @@ func Put(key string, value *Obj) {
 func Get(key string) *Obj {
 	return RedisStore[key]
 }
+
+func Del(key string) bool {
+	if RedisStore[key] != nil {
+		delete(RedisStore, key)
+		return true
+	}
+	return false
+}

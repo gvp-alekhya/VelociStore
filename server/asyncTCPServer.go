@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"syscall"
+	"time"
 
 	"github.com/gvp-alekhya/VelociStore/config"
 	"github.com/gvp-alekhya/VelociStore/core"
@@ -40,6 +41,11 @@ func RunAsyncTCPServer() error {
 	}
 
 	for {
+
+		if time.Now().After(config.CRON_LAST_EXECUTED_TIME.Add(config.CRON_FREQUENCY)) {
+			core.DeleteExpiredKeys()
+			config.CRON_LAST_EXECUTED_TIME = time.Now()
+		}
 		// see if any FD is ready for an IO
 		nevents, e := syscall.EpollWait(epollFD, events[:], -1)
 		if e != nil {

@@ -70,6 +70,7 @@ func evalGet(args []string, c io.ReadWriter) error {
 		return errors.New("no key found")
 	}
 	if Obj.ExpirationInMs != -1 && Obj.ExpirationInMs <= time.Now().UnixMilli() {
+		Del(key)
 		c.Write([]byte(config.NILResponse))
 		return nil
 	}
@@ -105,15 +106,38 @@ func evalTTL(args []string, c io.ReadWriter) error {
 }
 func evalDel(args []string, c io.ReadWriter) error {
 
-	if len(args) != 1 {
-		return errors.New("ERR wrong number of arguments for 'TTL' command")
+	if len(args) == 0 {
+		return errors.New("ERR wrong number of arguments for 'DEL' command")
 	}
-	key := args[0]
-	delete(RedisStore, key)
-	c.Write(Encode(config.OKResponse, false))
+	count := 0
+	for _, key := range args {
+		if Del(key) {
+			count += 1
+		}
+	}
+	c.Write(Encode(count, false))
 	return nil
 }
+func evalExpire(args []string, c io.ReadWriter) error {
 
+	if len(args) != 2 {
+		return errors.New("ERR wrong number of arguments for 'EXPIRE' command")
+	}
+	key := args[0]
+	Obj := Get(key)
+	if Obj == nil {
+		c.Write(Encode(config.ZeroResponse, false))
+	} else {
+		expirationInSec, err := strconv.ParseInt(args[1], 10, 64) //converting decimal to 64 bit int
+		if err != nil {
+			return errors.New("(error) input is not an integer or out of range")
+		}
+		expirationInMs := expirationInSec * 1000
+		Obj.ExpirationInMs = expirationInMs
+	}
+	c.Write(Encode(config.OneResponse, false))
+	return nil
+}
 func EvaluateAndRespond(cmd *RespCmd, c io.ReadWriter) error {
 	switch cmd.Cmd {
 	case "PING":
@@ -126,6 +150,8 @@ func EvaluateAndRespond(cmd *RespCmd, c io.ReadWriter) error {
 		return evalTTL(cmd.Args, c)
 	case "DEL":
 		return evalDel(cmd.Args, c)
+	case "EXPIRE":
+		return evalExpire(cmd.Args, c)
 	default:
 		return evalCommand(cmd.Args, c)
 	}
