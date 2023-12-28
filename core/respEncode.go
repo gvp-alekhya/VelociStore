@@ -1,15 +1,19 @@
 package core
-import(
+
+import (
 	"fmt"
 )
-func EncodeString(str string)( []byte){
-	eStr := (fmt.Sprintf("+%s\r\n", str))
-	fmt.Println("Encoded String :: ", eStr)
-	return []byte(eStr)
-}
 
-func EncodeBinaryString(str string)( []byte){
-	eStr := fmt.Sprintf("$%d\r\n%s\r\n", len(str), str)
-	fmt.Println("EncodeBinaryString  :: ", eStr)
-	return []byte(eStr)
+func Encode(value interface{}, isSimple bool) []byte {
+	switch v := value.(type) {
+	case string:
+		if isSimple {
+			return []byte(fmt.Sprintf("+%s\r\n", value))
+		}
+		return []byte(fmt.Sprintf("$%d\r\n%s\r\n", len(value.(string)), value))
+	case int, int8, int16, int32, int64:
+		return []byte(fmt.Sprintf(":%d\r\n", v))
+	}
+
+	return []byte{}
 }
