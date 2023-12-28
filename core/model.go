@@ -2,6 +2,8 @@ package core
 
 import (
 	"time"
+
+	"github.com/gvp-alekhya/VelociStore/config"
 )
 
 var RedisStore map[string]*Obj //Declaring hash map to save keys of type strings and values as pointers object type
@@ -27,6 +29,9 @@ func NewObj(value interface{}, expirationInMs int64) *Obj {
 }
 
 func Put(key string, value *Obj) {
+	if len(RedisStore) == config.MAX_KEY_LIMIT {
+		Evict()
+	}
 	RedisStore[key] = value
 }
 
