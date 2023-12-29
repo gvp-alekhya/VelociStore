@@ -73,15 +73,15 @@ func RunAsyncTCPServer() error {
 				}
 			} else {
 				//Read from connection
-				command := core.FDComm{Fd: int(events[i].Fd)}
-				respCmd, err := ReadCommand(command)
+				connection := core.FDComm{Fd: int(events[i].Fd)}
+				respCmds, err := ReadCommands(connection)
 				if err != nil {
 					fmt.Println("Error reading from client ", e)
 					syscall.Close(int(events[i].Fd))
 					continue
 				}
 				//Write to Connection
-				WriteCommand(command, respCmd)
+				WriteCommand(connection, respCmds)
 			}
 		}
 	}

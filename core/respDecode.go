@@ -39,7 +39,8 @@ func DecodeBulkString(data []byte) (string, int, error) {
 	pos := 1
 	len, delta := readLength(data[1:])
 	pos += delta
-	fmt.Printf("DecodeBulkString Read Length %d:: pos :: %d :: string %s\n", len, pos, string(data[pos:pos+len]))
+
+	fmt.Println("DecodeBulkString :: len :: pos :: data", len, pos, string(data))
 	return string(data[pos:(pos + len)]), pos + len + 2, nil
 }
 
@@ -64,59 +65,53 @@ func DecodeBoolean(data []byte) (boolean bool, pos int, err error) {
 }
 func DecodeArray(data []byte) (interface{}, int, error) {
 	// first character *
-	var index int = 1
+	index := 1
 	// reading the length
 	count, currRead := readLength(data[index:])
-	fmt.Printf("DecodeArray Read Outside loop Length %d:: Delta :: %d\n", count, currRead)
+	fmt.Println("DecodeArray :: count :: currRead", count, currRead, string(data))
 	index += currRead
-	fmt.Printf("DecodeArray Read Outside loop index %d\n", index)
 	var elems []interface{} = make([]interface{}, count)
 	for i := range elems {
+		fmt.Println("DecodeArray In loop :: data[index:] :: currRead", index, string(data[index:]))
 		elem, currRead, err := Decode(data[index:])
-		fmt.Printf("DecodeArray Read Element %T :: diff %d:: index :: %d\n", elem, currRead, index)
+		fmt.Println("DecodeArray In loop :: elem :: currRead", elem, currRead)
 		if err != nil {
 			return nil, 0, err
 		}
 		elems[i] = elem
 		index += currRead
 	}
+	fmt.Println("DecodeArray Return:: elem :: index", elems, index)
 	return elems, index, nil
 }
 
 func readLength(data []byte) (int, int) {
 	pos, length := 0, 0
-	for pos = range data {
+	for ; pos < len(data); pos++ {
 		b := data[pos]
 		if !(b >= '0' && b <= '9') {
 			return length, pos + 2
 		}
+		fmt.Println("Read length :: len :: ", length, int(b-'0'))
 		length = length*10 + int(b-'0')
 	}
 	return 0, 0
 }
 
-func DecodeArrayString(data []byte) ([]string, error) {
-	value, _, err := Decode(data)
-	if err != nil {
-		return nil, err
+func DecodeCommands(data []byte) ([]interface{}, error) {
+	if len(data) == 0 {
+		return nil, errors.New("no data")
 	}
-	ts, ok := value.([]interface{})
-	if !ok {
-		return nil, errors.New("unexpected type")
-	}
-
-	tokens := make([]string, len(ts))
-	for i, v := range ts {
-		switch t := v.(type) {
-		case string:
-			tokens[i] = t
-		case []uint8:
-			tokens[i] = string(t)
-		default:
-			return nil, fmt.Errorf("unexpected type in array: %T", v)
+	var values []interface{} = make([]interface{}, 0)
+	index := 0
+	for index < len(data) {
+		value, delta, err := Decode(data[index:])
+		if err != nil {
+			return values, err
 		}
+		index += delta
+		values = append(values, value)
 	}
-	fmt.Print("Decoded data tokens\n", tokens)
-
-	return tokens, nil
+	fmt.Println("Decode commands :: ", values)
+	return values, nil
 }

@@ -1,7 +1,8 @@
 package core
 
 import (
-	"errors"
+	"bytes"
+	"fmt"
 	"io"
 	"strconv"
 	"strings"
@@ -10,11 +11,11 @@ import (
 	"github.com/gvp-alekhya/VelociStore/config"
 )
 
-func evalCommand(args []string, c io.ReadWriter) error {
+func evalCommand(args []string, c io.ReadWriter) []byte {
 	var b []byte
 
 	if len(args) >= 2 {
-		return errors.New("ERR wrong number of arguments for 'ping' command")
+		return Encode("ERR wrong number of arguments for 'ping' command", false)
 	}
 
 	if len(args) == 0 {
@@ -22,12 +23,11 @@ func evalCommand(args []string, c io.ReadWriter) error {
 	} else {
 		b = Encode(args[0], false)
 	}
-	_, err := c.Write(b)
-	return err
+	return b
 }
-func evalSet(args []string, c io.ReadWriter) error {
+func evalSet(args []string, c io.ReadWriter) []byte {
 	if len(args) <= 1 {
-		return errors.New("ERR wrong number of arguments for 'SET' command")
+		return Encode("ERR wrong number of arguments for 'SET' command", false)
 	}
 
 	var key, value string
@@ -41,73 +41,67 @@ func evalSet(args []string, c io.ReadWriter) error {
 		switch lowercaseArgs {
 		case "ex":
 			if i == len(args) {
-				return errors.New("ERR syntax error")
+				return Encode("ERR syntax error", false)
 			}
 			i++
 			expirationInSec, err := strconv.ParseInt(args[i], 10, 64) //converting decimal to 64 bit int
 			if err != nil {
-				return errors.New("ERR invalid expiration value passed in 'SET' command")
+				return Encode("ERR invalid expiration value passed in 'SET' command", false)
 			}
 			expirationInMs = expirationInSec * 1000
 
 		default:
-			return errors.New("ERR invalid arguments for 'SET' command")
+			return Encode("ERR invalid arguments for 'SET' command", false)
 		}
 	}
 	Put(key, NewObj(value, expirationInMs))
-	c.Write([]byte(config.OKResponse))
-	return nil
+	return Encode(config.OKResponse, false)
 }
-func evalGet(args []string, c io.ReadWriter) error {
+func evalGet(args []string, c io.ReadWriter) []byte {
 	if len(args) != 1 {
-		return errors.New("ERR wrong number of arguments for 'GET' command")
+		return Encode("ERR wrong number of arguments for 'GET' command", false)
 	}
 
 	key := args[0]
 	Obj := Get(key)
 	if Obj == nil {
-		c.Write([]byte(config.NILResponse))
-		return errors.New("no key found")
+		return []byte(config.NILResponse)
 	}
 	if Obj.ExpirationInMs != -1 && Obj.ExpirationInMs <= time.Now().UnixMilli() {
 		Del(key)
-		c.Write([]byte(config.NILResponse))
-		return nil
+		return []byte(config.NILResponse)
 	}
-	c.Write(Encode(Obj.Value, true))
-
-	return nil
+	return Encode(Obj.Value, true)
 }
-func evalTTL(args []string, c io.ReadWriter) error {
+func evalTTL(args []string, c io.ReadWriter) []byte {
 
 	if len(args) != 1 {
-		return errors.New("ERR wrong number of arguments for 'TTL' command")
+		return Encode("ERR wrong number of arguments for 'TTL' command", false)
 	}
 	key := args[0]
 
 	Obj := Get(key)
 	if Obj == nil {
-		c.Write([]byte(config.NoKeyResponse))
-		return errors.New("ERR no key found")
+
+		return []byte(config.NoKeyResponse)
 	}
 	currentTimeInMS := time.Now().UnixMilli()
 	if Obj.ExpirationInMs == -1 {
-		c.Write([]byte(config.NoExpiryResponse))
-		return errors.New("no expiration set for key")
+
+		return []byte(config.NoExpiryResponse)
 	}
 
 	var timeLeft = Obj.ExpirationInMs - currentTimeInMS
 	if timeLeft < 0 {
-		c.Write([]byte(config.NoKeyResponse))
-		return errors.New("key expired")
+
+		return Encode("key expired", false)
 	}
-	c.Write(Encode(int64(timeLeft/1000), false))
-	return nil
+	return (Encode(int64(timeLeft/1000), false))
 }
-func evalDel(args []string, c io.ReadWriter) error {
+func evalDel(args []string, c io.ReadWriter) []byte {
 
 	if len(args) == 0 {
-		return errors.New("ERR wrong number of arguments for 'DEL' command")
+		return Encode("ERR wrong number of arguments for 'DEL' command", false)
 	}
 	count := 0
 	for _, key := range args {
@@ -115,44 +109,49 @@ func evalDel(args []string, c io.ReadWriter) error {
 			count += 1
 		}
 	}
-	c.Write(Encode(count, false))
-	return nil
+	return Encode(count, false)
 }
-func evalExpire(args []string, c io.ReadWriter) error {
+func evalExpire(args []string, c io.ReadWriter) []byte {
 
 	if len(args) != 2 {
-		return errors.New("ERR wrong number of arguments for 'EXPIRE' command")
+		return Encode("ERR wrong number of arguments for 'EXPIRE' command", false)
 	}
 	key := args[0]
 	Obj := Get(key)
 	if Obj == nil {
-		c.Write(Encode(config.ZeroResponse, false))
+		return (Encode(config.ZeroResponse, false))
 	} else {
 		expirationInSec, err := strconv.ParseInt(args[1], 10, 64) //converting decimal to 64 bit int
 		if err != nil {
-			return errors.New("(error) input is not an integer or out of range")
+			return Encode("(error) input is not an integer or out of range", false)
 		}
 		expirationInMs := expirationInSec * 1000
 		Obj.ExpirationInMs = expirationInMs
 	}
-	c.Write(Encode(config.OneResponse, false))
-	return nil
+	return Encode(config.OneResponse, false)
 }
-func EvaluateAndRespond(cmd *RespCmd, c io.ReadWriter) error {
-	switch cmd.Cmd {
-	case "PING":
-		return evalCommand(cmd.Args, c)
-	case "GET":
-		return evalGet(cmd.Args, c)
-	case "SET":
-		return evalSet(cmd.Args, c)
-	case "TTL":
-		return evalTTL(cmd.Args, c)
-	case "DEL":
-		return evalDel(cmd.Args, c)
-	case "EXPIRE":
-		return evalExpire(cmd.Args, c)
-	default:
-		return evalCommand(cmd.Args, c)
+func EvaluateAndRespond(cmds RespCmds, c io.ReadWriter) {
+	var response []byte
+	buf := bytes.NewBuffer(response)
+	for _, cmd := range cmds {
+		fmt.Println("EvaluateAndRespond :: cmd", cmd)
+		switch cmd.Cmd {
+		case "PING":
+			buf.Write(evalCommand(cmd.Args, c))
+		case "GET":
+			buf.Write(evalGet(cmd.Args, c))
+		case "SET":
+			buf.Write(evalSet(cmd.Args, c))
+		case "TTL":
+			buf.Write(evalTTL(cmd.Args, c))
+		case "DEL":
+			buf.Write(evalDel(cmd.Args, c))
+		case "EXPIRE":
+			buf.Write(evalExpire(cmd.Args, c))
+		default:
+			buf.Write(evalCommand(cmd.Args, c))
+		}
 	}
+	fmt.Println("EvaluateAndRespond :: buf", buf.String())
+	c.Write(buf.Bytes())
 }
