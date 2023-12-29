@@ -48,7 +48,10 @@ func RunAsyncTCPServer() error {
 		}
 		// see if any FD is ready for an IO
 		nevents, e := syscall.EpollWait(epollFD, events[:], -1)
-		if e != nil {
+		if err == syscall.EINTR {
+			// Ignore the interrupted system call error
+			continue
+		} else if e != nil {
 			fmt.Println("Error", e)
 			return err
 		}

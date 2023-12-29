@@ -12,3 +12,4 @@ const (
 
 var CRON_FREQUENCY time.Duration = 1 * time.Second
 var CRON_LAST_EXECUTED_TIME time.Time = time.Now()
+var AOF_FILE_NAME string = "./veloci-store.aof"

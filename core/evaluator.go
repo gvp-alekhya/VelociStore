@@ -130,6 +130,10 @@ func evalExpire(args []string, c io.ReadWriter) []byte {
 	}
 	return Encode(config.OneResponse, false)
 }
+func evalRewriteAOF(args []string) []byte {
+	GenerateDumpAOF()
+	return []byte(config.OKResponse)
+}
 func EvaluateAndRespond(cmds RespCmds, c io.ReadWriter) {
 	var response []byte
 	buf := bytes.NewBuffer(response)
@@ -148,6 +152,8 @@ func EvaluateAndRespond(cmds RespCmds, c io.ReadWriter) {
 			buf.Write(evalDel(cmd.Args, c))
 		case "EXPIRE":
 			buf.Write(evalExpire(cmd.Args, c))
+		case "BGREWRITEAOF":
+			buf.Write(evalRewriteAOF(cmd.Args))
 		default:
 			buf.Write(evalCommand(cmd.Args, c))
 		}

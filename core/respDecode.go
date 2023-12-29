@@ -2,7 +2,6 @@ package core
 
 import (
 	"errors"
-	"fmt"
 	"strings"
 )
 
@@ -39,8 +38,6 @@ func DecodeBulkString(data []byte) (string, int, error) {
 	pos := 1
 	len, delta := readLength(data[1:])
 	pos += delta
-
-	fmt.Println("DecodeBulkString :: len :: pos :: data", len, pos, string(data))
 	return string(data[pos:(pos + len)]), pos + len + 2, nil
 }
 
@@ -68,20 +65,17 @@ func DecodeArray(data []byte) (interface{}, int, error) {
 	index := 1
 	// reading the length
 	count, currRead := readLength(data[index:])
-	fmt.Println("DecodeArray :: count :: currRead", count, currRead, string(data))
 	index += currRead
 	var elems []interface{} = make([]interface{}, count)
 	for i := range elems {
-		fmt.Println("DecodeArray In loop :: data[index:] :: currRead", index, string(data[index:]))
+
 		elem, currRead, err := Decode(data[index:])
-		fmt.Println("DecodeArray In loop :: elem :: currRead", elem, currRead)
 		if err != nil {
 			return nil, 0, err
 		}
 		elems[i] = elem
 		index += currRead
 	}
-	fmt.Println("DecodeArray Return:: elem :: index", elems, index)
 	return elems, index, nil
 }
 
@@ -92,7 +86,6 @@ func readLength(data []byte) (int, int) {
 		if !(b >= '0' && b <= '9') {
 			return length, pos + 2
 		}
-		fmt.Println("Read length :: len :: ", length, int(b-'0'))
 		length = length*10 + int(b-'0')
 	}
 	return 0, 0
@@ -112,6 +105,5 @@ func DecodeCommands(data []byte) ([]interface{}, error) {
 		index += delta
 		values = append(values, value)
 	}
-	fmt.Println("Decode commands :: ", values)
 	return values, nil
 }

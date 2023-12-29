@@ -15,6 +15,15 @@ func Encode(value interface{}, isSimple bool) []byte {
 		return []byte(fmt.Sprintf(":%d\r\n", v))
 	case error:
 		return []byte(fmt.Sprintf("-%s\r\n", v))
+	case []string:
+		{
+			buf := make([]byte, 0)
+
+			for _, val := range value.([]string) {
+				buf = append(buf, Encode(val, false)...)
+			}
+			return []byte(fmt.Sprintf("$%d\r\n%s\r\n", len(value.([]string)), string(buf)))
+		}
 	}
 
 	return []byte{}
