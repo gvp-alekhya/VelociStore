@@ -7,24 +7,18 @@ import (
 )
 
 var RedisStore map[string]*Obj //Declaring hash map to save keys of type strings and values as pointers object type
-/*Go map declaration map[keyType]valueType*/
-
-type Obj struct {
-	Value          interface{}
-	ExpirationInMs int64
-}
 
 // init method in Go is called once during program execution automatically
 func init() {
 	RedisStore = make(map[string]*Obj)
 }
 
-func NewObj(value interface{}, expirationInMs int64) *Obj {
+func NewObj(value interface{}, expirationInMs int64, objType uint8, oEncoding uint8) *Obj {
 	var expiresAt int64 = -1
 	if expirationInMs > 0 {
 		expiresAt = time.Now().UnixMilli() + expirationInMs
 	}
-	nobj := Obj{Value: value, ExpirationInMs: expiresAt}
+	nobj := Obj{Value: value, ExpirationInMs: expiresAt, TypeEncoding: objType | oEncoding}
 	return &nobj
 }
 
