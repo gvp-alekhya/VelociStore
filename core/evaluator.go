@@ -166,6 +166,15 @@ func evalIncr(args []string, c io.ReadWriter) []byte {
 	return Encode(parsedValue, false)
 
 }
+func evalInfo() []byte {
+	var response []byte
+	buf := bytes.NewBuffer(response)
+	buf.WriteString("# Keyspace\r\n")
+	for i := range KeySpaceStats {
+		buf.WriteString(fmt.Sprintf("db%d:keys=%d,expires=0,avg_ttl=0\r\n", i, KeySpaceStats[i]["keys"]))
+	}
+	return Encode(buf.String(), false)
+}
 
 func EvaluateAndRespond(cmds RespCmds, c io.ReadWriter) {
 	var response []byte
@@ -189,6 +198,8 @@ func EvaluateAndRespond(cmds RespCmds, c io.ReadWriter) {
 			buf.Write(evalIncr(cmd.Args, c))
 		case "BGREWRITEAOF":
 			buf.Write(evalRewriteAOF(cmd.Args))
+		case "INFO":
+			buf.Write(evalInfo())
 		default:
 			buf.Write(evalCommand(cmd.Args, c))
 		}

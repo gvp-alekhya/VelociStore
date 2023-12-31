@@ -26,7 +26,11 @@ func Put(key string, value *Obj) {
 	if len(RedisStore) == config.MAX_KEY_LIMIT {
 		Evict()
 	}
+	if KeySpaceStats[0] == nil {
+		KeySpaceStats[0] = make(map[string]int)
+	}
 	RedisStore[key] = value
+	KeySpaceStats[0]["keys"]++
 }
 
 func Get(key string) *Obj {
@@ -38,5 +42,9 @@ func Del(key string) bool {
 		delete(RedisStore, key)
 		return true
 	}
+	if KeySpaceStats[0] != nil && KeySpaceStats[0]["keys"] != 0 {
+		KeySpaceStats[0]["keys"]--
+	}
+
 	return false
 }

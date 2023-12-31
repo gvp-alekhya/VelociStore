@@ -8,6 +8,9 @@ const (
 	SERVER_TYPE   = "tcp"
 	MAX_CLIENTS   = 20000
 	MAX_KEY_LIMIT = 5
+	//No of keys evicted when eviction happens
+	EVICTION_RATIO    = 0.40
+	EVICTION_STRATEGY = "allkeys-random"
 )
 
 var CRON_FREQUENCY time.Duration = 1 * time.Second
